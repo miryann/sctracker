@@ -42,7 +42,7 @@ Seeded from Qantas earning tables. Verify values before relying on them:
 https://www.qantas.com/au/en/frequent-flyer/earn-points/airline-earning-tables.html
 
 Edit via `src/lib/db/seed.ts`, then `npm run seed`.
-SC rules UI is read-only in v1.
+SC rules UI is read-only (edit via seed only).
 
 ## User preferences
 - Self-hosted home lab. No cloud dependencies ever.
