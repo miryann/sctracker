@@ -32,11 +32,13 @@
 
 	function dismissPaceAlert(rate: number) {
 		try {
-			// Clear any stale keys from previous rates
+			// Collect keys first, then delete (mutating during index iteration skips keys)
+			const toDelete: string[] = [];
 			for (let i = 0; i < localStorage.length; i++) {
 				const k = localStorage.key(i);
-				if (k && k.startsWith('pace-alert-dismissed-')) localStorage.removeItem(k);
+				if (k && k.startsWith('pace-alert-dismissed-')) toDelete.push(k);
 			}
+			toDelete.forEach((k) => localStorage.removeItem(k));
 			localStorage.setItem(getPaceAlertKey(rate), '1');
 		} catch { /* ignore */ }
 		alertDismissed = true;

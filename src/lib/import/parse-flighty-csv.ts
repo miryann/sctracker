@@ -54,7 +54,9 @@ export function parseFlightyCsv(csvText: string): ParseResult {
 
 	const flights: ParsedFlight[] = [];
 	const errors: ParseError[] = [];
-	const today = new Date().toISOString().slice(0, 10);
+	// Use local date (not UTC) — Australian flights at 6am AEDT are previous day in UTC
+	const d = new Date();
+	const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
 	for (let i = 1; i < lines.length; i++) {
 		const line = lines[i].trim();

@@ -113,18 +113,21 @@
 				.map((f) => `${f.route}|${f.cabin}`)
 		)];
 
-		await Promise.all(
-			uniquePairs.map(async (pair) => {
-				const [route, cabin] = pair.split('|');
-				const params = new URLSearchParams({ route, cabin });
-				const res = await fetch(`/api/sc-lookup?${params}`);
-				if (res.ok) {
-					const data = await res.json();
-					scCache.set(pair, data.sc_value);
-				}
-			})
-		);
-		lookingUp = false;
+		try {
+			await Promise.allSettled(
+				uniquePairs.map(async (pair) => {
+					const [route, cabin] = pair.split('|');
+					const params = new URLSearchParams({ route, cabin });
+					const res = await fetch(`/api/sc-lookup?${params}`);
+					if (res.ok) {
+						const data = await res.json();
+						scCache.set(pair, data.sc_value);
+					}
+				})
+			);
+		} finally {
+			lookingUp = false;
+		}
 
 		previewRows = flights.map((f) => ({
 			...f,
@@ -158,14 +161,17 @@
 	}
 
 	function setCabin(i: number, cabin: string) {
-		previewRows[i] = { ...previewRows[i], cabin: cabin as 'economy' | 'business' | 'first' };
-		// Re-fetch SC for this row's new cabin
-		const row = previewRows[i];
-		const params = new URLSearchParams({ route: row.route, cabin });
+		previewRows[i] = { ...previewRows[i], cabin: cabin as 'economy' | 'business' | 'first', sc_value: null };
+		// Re-fetch SC for this row's new cabin; ignore response if cabin changed again
+		const route = previewRows[i].route;
+		const params = new URLSearchParams({ route, cabin });
 		fetch(`/api/sc-lookup?${params}`).then((r) => r.json()).then((data) => {
-			previewRows[i] = { ...previewRows[i], sc_value: data.sc_value };
-			previewRows = [...previewRows]; // trigger reactivity
-		});
+			// Guard against stale response if user changed cabin again before this resolved
+			if (previewRows[i]?.cabin === cabin) {
+				previewRows[i] = { ...previewRows[i], sc_value: data.sc_value };
+				previewRows = [...previewRows]; // trigger reactivity
+			}
+		}).catch(() => { /* ignore network errors — row stays amber */ });
 	}
 </script>
 
@@ -291,7 +297,7 @@
 				<p class="text-xs text-slate-500 mb-2">
 					{previewRows.length} flights parsed.
 					{#if amberCount > 0}
-						<span class="text-amber-600 font-medium">{amberCount} need cabin selection before import.</span>
+						<span class="text-amber-600 font-medium">{amberCount} need cabin / SC value before import.</span>
 					{/if}
 				</p>
 				<div class="overflow-x-auto rounded-lg border border-slate-200">
@@ -329,7 +335,20 @@
 									</td>
 									<td class="px-3 py-2 text-slate-600 capitalize">{row.status}</td>
 									<td class="px-3 py-2 text-right font-semibold tabular-nums {amber ? 'text-amber-500' : 'text-slate-900'}">
-										{row.sc_value ?? '—'}
+										{#if row.cabin !== null && row.sc_value === null}
+											<input
+												type="number"
+												min="1"
+												placeholder="SC?"
+												class="w-16 rounded border border-amber-300 bg-white px-1.5 py-0.5 text-xs text-slate-700 text-right"
+												on:change={(e) => {
+													const v = parseInt(e.currentTarget.value);
+													if (v > 0) { previewRows[i] = { ...previewRows[i], sc_value: v }; previewRows = [...previewRows]; }
+												}}
+											/>
+										{:else}
+											{row.sc_value ?? '—'}
+										{/if}
 									</td>
 									<td class="px-3 py-2 text-slate-400 max-w-[160px] truncate" title={row.notes}>{row.notes || '—'}</td>
 								</tr>
@@ -346,7 +365,7 @@
 						class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-40 transition-colors"
 					>{importing ? 'Importing…' : `Import ${previewRows.length} flights`}</button>
 					{#if !canImport && amberCount > 0}
-						<p class="text-xs text-amber-600">Select cabin for all amber rows first.</p>
+						<p class="text-xs text-amber-600">Fill cabin and SC value for all amber rows first.</p>
 					{/if}
 				</div>
 			</div>
