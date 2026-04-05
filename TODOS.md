@@ -17,3 +17,23 @@
 **Effort:** XS (human: 5 min / CC: 1 min)
 **Priority:** P2
 **Depends on:** This plan (seed.ts rewrite)
+
+---
+
+## P3 — EditFlightModal: handle 404 gracefully
+
+**What:** If a flight is deleted while EditFlightModal is open, the PUT returns 404. Currently this would be a silent failure (no error shown, modal just closes or hangs).
+
+**Why:** Currently a silent failure — user edits a flight, clicks Save, nothing happens, no error shown. Rare in practice (single-user tool), but jarring.
+
+**Pros:** Simple fix. One extra `if (res.status === 404)` branch in EditFlightModal's submit handler.
+
+**Cons:** Extremely rare race condition on a single-user app. Low priority.
+
+**Context:** EditFlightModal calls `PUT /api/flights/[id]`. If the flight was concurrently deleted (different tab), the server returns 404. The AddFlightModal equivalent doesn't have this issue (POST creates new). Just add: `if (res.status === 404) { err = 'This flight no longer exists.'; saving = false; return; }` in the submit handler.
+
+**Where to start:** `src/lib/components/EditFlightModal.svelte` — submit function, after the fetch call.
+
+**Effort:** XS (human: 5 min / CC: 1 min)
+**Priority:** P3
+**Depends on:** EditFlightModal implementation (v2)
