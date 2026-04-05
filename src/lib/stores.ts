@@ -57,6 +57,20 @@ export async function toggleProjection(flight: Flight) {
 	}
 }
 
+export async function updateFlight(id: number, updates: Partial<Omit<Flight, 'id' | 'created_at'>>) {
+	const res = await fetch(`/api/flights/${id}`, {
+		method: 'PUT',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify(updates)
+	});
+	if (res.ok) {
+		const updated = await res.json() as Flight;
+		flights.update((fs) => fs.map((f) => (f.id === id ? updated : f)));
+		await loadSummary();
+	}
+	return res;
+}
+
 export async function deleteFlight(id: number) {
 	await fetch(`/api/flights/${id}`, { method: 'DELETE' });
 	flights.update((fs) => fs.filter((f) => f.id !== id));

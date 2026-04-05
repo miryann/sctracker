@@ -1,9 +1,12 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { flights, summary, loadFlights, loadSummary, toggleProjection, deleteFlight } from '$lib/stores.js';
+	import type { Flight } from '$lib/stores.js';
 	import AddFlightModal from '$lib/components/AddFlightModal.svelte';
+	import EditFlightModal from '$lib/components/EditFlightModal.svelte';
 
 	let showAddModal = false;
+	let editingFlight: Flight | null = null;
 
 	onMount(async () => {
 		await Promise.all([loadFlights(), loadSummary()]);
@@ -31,6 +34,11 @@
 
 	function fmtDate(iso: string) {
 		return new Date(iso).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
+	}
+
+	function truncateNotes(s: string | null, max = 30): string {
+		if (!s) return '—';
+		return s.length > max ? s.slice(0, max) + '…' : s;
 	}
 
 	async function handleDelete(id: number) {
@@ -72,6 +80,7 @@
 							<th class="px-4 py-2 text-left text-xs font-medium text-slate-500">Route</th>
 							<th class="px-4 py-2 text-left text-xs font-medium text-slate-500">Date</th>
 							<th class="px-4 py-2 text-left text-xs font-medium text-slate-500">Cabin</th>
+							<th class="px-4 py-2 text-left text-xs font-medium text-slate-500">Notes</th>
 							<th class="px-4 py-2 text-right text-xs font-medium text-slate-500">SCs</th>
 							{#if group.status === 'planned'}
 								<th class="px-4 py-2 text-center text-xs font-medium text-slate-500">Include?</th>
@@ -85,6 +94,7 @@
 								<td class="px-4 py-3 font-mono font-semibold text-slate-900">{flight.route}</td>
 								<td class="px-4 py-3 text-slate-700">{fmtDate(flight.date)}</td>
 								<td class="px-4 py-3 text-slate-500 capitalize">{flight.cabin}{flight.fare_class ? ` · ${flight.fare_class}` : ''}</td>
+								<td class="px-4 py-3 text-slate-500 max-w-[180px]" title={flight.notes ?? ''}>{truncateNotes(flight.notes)}</td>
 								<td class="px-4 py-3 text-right font-semibold text-slate-900 tabular-nums">{flight.sc_value}</td>
 								{#if group.status === 'planned'}
 									<td class="px-4 py-3 text-center">
@@ -98,11 +108,18 @@
 									</td>
 								{/if}
 								<td class="px-4 py-3 text-right">
-									<button
-										on:click={() => handleDelete(flight.id)}
-										aria-label="Delete flight"
-										class="p-2.5 text-slate-300 hover:text-red-400 transition-colors rounded-lg hover:bg-red-50"
-									>×</button>
+									<div class="flex items-center justify-end gap-1">
+										<button
+											on:click={() => editingFlight = flight}
+											aria-label="Edit flight"
+											class="p-2 text-slate-400 hover:text-blue-500 transition-colors rounded-lg hover:bg-blue-50 text-xs"
+										>✎</button>
+										<button
+											on:click={() => handleDelete(flight.id)}
+											aria-label="Delete flight"
+											class="p-2.5 text-slate-300 hover:text-red-400 transition-colors rounded-lg hover:bg-red-50"
+										>×</button>
+									</div>
 								</td>
 							</tr>
 						{/each}
@@ -117,5 +134,13 @@
 	<AddFlightModal
 		on:close={() => showAddModal = false}
 		on:saved={async () => { showAddModal = false; await Promise.all([loadFlights(), loadSummary()]); }}
+	/>
+{/if}
+
+{#if editingFlight}
+	<EditFlightModal
+		flight={editingFlight}
+		on:close={() => editingFlight = null}
+		on:saved={async () => { editingFlight = null; await Promise.all([loadFlights(), loadSummary()]); }}
 	/>
 {/if}

@@ -5,6 +5,7 @@
 	import AddFlightModal from '$lib/components/AddFlightModal.svelte';
 
 	let showAddModal = false;
+	let alertDismissed = false;
 
 	onMount(loadSummary);
 
@@ -15,6 +16,37 @@
 	function fmtDate(iso: string) {
 		return new Date(iso).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
 	}
+
+	// Pace alert dismissal — keyed to floor of required_rate_per_day.
+	// Expires automatically when rate changes by > 2 SC/day.
+	function getPaceAlertKey(rate: number) {
+		return `pace-alert-dismissed-${Math.floor(rate)}`;
+	}
+
+	function isPaceAlertDismissed(rate: number): boolean {
+		try {
+			const key = getPaceAlertKey(rate);
+			return localStorage.getItem(key) === '1';
+		} catch { return false; }
+	}
+
+	function dismissPaceAlert(rate: number) {
+		try {
+			// Clear any stale keys from previous rates
+			for (let i = 0; i < localStorage.length; i++) {
+				const k = localStorage.key(i);
+				if (k && k.startsWith('pace-alert-dismissed-')) localStorage.removeItem(k);
+			}
+			localStorage.setItem(getPaceAlertKey(rate), '1');
+		} catch { /* ignore */ }
+		alertDismissed = true;
+	}
+
+	$: showPaceAlert = $summary !== null
+		&& $summary.gap_with_booked > 0
+		&& $summary.required_rate_per_day > 10
+		&& !alertDismissed
+		&& !isPaceAlertDismissed($summary.required_rate_per_day);
 </script>
 
 {#if $summary}
@@ -34,6 +66,23 @@
 			class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-blue-500 transition-colors"
 		>+ Add flight</button>
 	</div>
+
+	<!-- Pace alert banner -->
+	{#if showPaceAlert}
+		<div class="mb-6 rounded-xl border border-red-200 bg-red-50 px-5 py-4 flex items-start gap-4">
+			<div class="flex-1">
+				<p class="text-sm font-semibold text-red-700">Pace alert: you need to book more flights.</p>
+				<p class="text-sm text-red-600 mt-0.5">
+					You still need <strong>{s.gap_with_booked} SCs</strong> in <strong>{s.days_remaining} days</strong> — that's <strong>{s.required_rate_per_day} SC/day</strong>. Book more flights to close the gap.
+				</p>
+			</div>
+			<button
+				on:click={() => dismissPaceAlert(s.required_rate_per_day)}
+				class="text-red-400 hover:text-red-600 transition-colors text-lg leading-none"
+				aria-label="Dismiss pace alert"
+			>×</button>
+		</div>
+	{/if}
 
 	<!-- Big numbers -->
 	<div class="grid grid-cols-2 gap-4 sm:grid-cols-4 mb-6">
