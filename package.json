@@ -1,0 +1,33 @@
+{
+  "name": "sctracker",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "vite dev --host",
+    "build": "vite build",
+    "preview": "vite preview",
+    "migrate": "npx tsx src/lib/db/migrate.ts",
+    "seed": "npx tsx src/lib/db/seed.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@sveltejs/adapter-node": "4.0.0",
+    "@sveltejs/kit": "2.20.6",
+    "better-sqlite3": "^11.1.2",
+    "svelte": "4.2.18"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "3.1.2",
+    "@types/better-sqlite3": "^7.6.11",
+    "@types/node": "^20.14.9",
+    "autoprefixer": "^10.4.19",
+    "postcss": "^8.4.39",
+    "tailwindcss": "^3.4.4",
+    "tsx": "^4.16.2",
+    "typescript": "^5.5.3",
+    "vite": "5.4.0",
+    "vitest": "^2.1.9"
+  },
+  "type": "module"
+}

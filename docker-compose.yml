@@ -1,0 +1,15 @@
+services:
+  sctracker:
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - sctracker-data:/app/data
+    restart: unless-stopped
+    environment:
+      - DATABASE_PATH=/app/data/sctracker.db
+      - PORT=3000
+      - HOST=0.0.0.0
+
+volumes:
+  sctracker-data:
